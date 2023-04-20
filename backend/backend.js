@@ -69,11 +69,31 @@ const Posts = sequelizeServer.define('posts', {
     likes: {
         type: DataTypes.INTEGER,
         field: 'post_likes'
+    },
+    username:{
+        type: DataTypes.STRING,
+        field: 'username'
     }
 });
 
+const Comments = sequelizeServer.define('comments', {
+    comment: {
+        type: DataTypes.STRING,
+        field: 'comment'
+    },
+    
+})
+
+User.hasMany(Posts);
+User.hasMany(Comments);
+Posts.hasMany(Comments);
+Posts.belongsTo(User);
+Comments.belongsTo(User);
+Comments.belongsTo(Posts);
+
 //ENDPOINTS VVV
 
+// post method
 app.post('/create-user', (req, res)=> {
     const newUser = req.body;
     async function createUser(){
@@ -101,6 +121,29 @@ app.post('/create-user', (req, res)=> {
     createUser();
 });
 
+app.post('/create-post', (req,res)=> {
+    const addPost = req.body;
+    async function createPost() {
+        try {
+            const findUser = await User.findOne({where: {username: addPost.username}});
+            if(findUser){
+                const create = await 
+                Posts.create({
+                    content: addPost.content,
+                    likes: '0',
+                    username: addPost.username
+                });
+                const setKey = await findUser.addPost(create);
+                if(setKey){
+                    res.status(200).send('Success.')
+                }
+            }
+        } catch (err) {
+            res.status(409).send(err);
+        }
+    }
+})
+
 app.get('/user/:username', (req, res) => {
     const username = req.params['username'];
     async function getUser() {
@@ -116,4 +159,4 @@ app.get('/user/:username', (req, res) => {
         }
     }
     getUser();
-})
+});
