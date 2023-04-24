@@ -20,7 +20,7 @@ app.use((req, res, next) => {
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
     next();
 });
-app.listen(port, '127.0.0.1', ()=>{
+server.listen(port, '127.0.0.1', ()=>{
     console.log(`server running on ${port}`)
 })
 
@@ -208,4 +208,19 @@ app.delete('/delete/:user', async (req, res) => {
         res.status(409).send(err)
     }
 
+}) 
+
+// put method 
+app.put('/update-password/:user/:newPassword', async (req, res) => {
+    try {
+        const user = req.params['user']
+        const newPassword = req.params['newPassword']
+        const findUser = await User.findOne({where: {username: user}})
+        if(findUser){
+            const updatePassword = await User.update({password: newPassword}, {where: {username: findUser.username}})
+            res.status(200).send('password updated')
+        }
+    } catch (err) {
+        res.status(409).send(err)
+    }
 })
