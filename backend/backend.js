@@ -1,14 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
-const multer = require('multer')
-const multerS3 = require('multer-s3')
 const app = express();
 const server = http.createServer(app);
-const AWS = require('aws-sdk');
 const { Sequelize, DataTypes } = require('sequelize');
-const uuid = require('uuid').v4;
-const path = require('path')
 const port = 7000
 const sequelizeServer = new Sequelize('postgres://amirhali:satele@localhost:6000/amirhali', {
     define: {
@@ -16,27 +11,6 @@ const sequelizeServer = new Sequelize('postgres://amirhali:satele@localhost:6000
     }
 });
 
-const uploadImage = multer({
-    dest: './public/data/uploads/'
-})
-// const s3 = new AWS.S3({
-//     accessKeyId: "AKIAXB2WOAY7BBV7VQ6K",
-//     secretAccessKey: "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",
-//     });
-// const BUCKET = 'capstone-project-2023';
-// const upload = multer({
-//     storage: multerS3({
-//         s3,
-//         bucket: BUCKET,
-//         metadata: (req, file, cb) => {
-//             cb(null, {fieldName: file.fieldname})
-//         },
-//         key: (req, file, cb) => {
-//             const ext = path.extname(file.originalname)
-//             cb(null, `${uuid()}${ext}`)
-//         }
-//     })
-// });
 
 
 app.use(express.json())
