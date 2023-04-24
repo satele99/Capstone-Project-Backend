@@ -1,16 +1,43 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const multer = require('multer')
+const multerS3 = require('multer-s3')
 const app = express();
 const server = http.createServer(app);
+const AWS = require('aws-sdk');
 const { Sequelize, DataTypes } = require('sequelize');
-const { create } = require('domain');
+const uuid = require('uuid').v4;
+const path = require('path')
 const port = 7000
 const sequelizeServer = new Sequelize('postgres://amirhali:satele@localhost:6000/amirhali', {
     define: {
         schema: 'capstone_backend'
     }
 });
+
+const uploadImage = multer({
+    dest: './public/data/uploads/'
+})
+// const s3 = new AWS.S3({
+//     accessKeyId: "AKIAXB2WOAY7BBV7VQ6K",
+//     secretAccessKey: "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",
+//     });
+// const BUCKET = 'capstone-project-2023';
+// const upload = multer({
+//     storage: multerS3({
+//         s3,
+//         bucket: BUCKET,
+//         metadata: (req, file, cb) => {
+//             cb(null, {fieldName: file.fieldname})
+//         },
+//         key: (req, file, cb) => {
+//             const ext = path.extname(file.originalname)
+//             cb(null, `${uuid()}${ext}`)
+//         }
+//     })
+// });
+
 
 app.use(express.json())
 app.use(cors());
@@ -63,7 +90,7 @@ const User = sequelizeServer.define('users', {
 
 const Posts = sequelizeServer.define('posts', {
     content: {
-        type: DataTypes.STRING,
+        type: DataTypes.TEXT,
         field: 'post_content'
     },
     likes: {
@@ -73,6 +100,14 @@ const Posts = sequelizeServer.define('posts', {
     username:{
         type: DataTypes.STRING,
         field: 'username'
+    },
+    images: {
+        type: DataTypes.BLOB('long'),
+        field: 'post_image'
+    }, 
+    uuid: {
+        type: DataTypes.STRING,
+        field: 'unique_identifier'
     }
 });
 
@@ -80,7 +115,7 @@ const Comments = sequelizeServer.define('comments', {
     comment: {
         type: DataTypes.STRING,
         field: 'comment'
-    },
+    }
     
 })
 
@@ -121,29 +156,34 @@ app.post('/create-user', (req, res)=> {
     createUser();
 });
 
-app.post('/create-post', (req,res)=> {
+app.post('/create-post', async (req,res)=> {
     const addPost = req.body;
-    async function createPost() {
-        try {
-            const findUser = await User.findOne({where: {username: addPost.username}});
-            if(findUser){
-                const create = await 
-                Posts.create({
-                    content: addPost.content,
-                    likes: '0',
-                    username: addPost.username
-                });
-                const setKey = await findUser.addPost(create);
-                if(setKey){
-                    res.status(200).send('Success.')
-                }
+    
+    try {
+        const findUser = await User.findOne({where: {username: addPost.username}});
+        console.log(req.files, req.body)
+        if(findUser){
+            const create = await 
+            Posts.create({
+                content: addPost.content,
+                likes: addPost.likes,
+                images: addPost.images,
+                username: addPost.username,
+                uuid: addPost.uuid
+            });
+            const setKey = await findUser.addPost(create);
+            if(setKey){
+                res.status(200).send('Success.')
             }
-        } catch (err) {
-            res.status(409).send(err);
         }
+    } catch (err) {
+        console.log(err) 
+        res.status(409).send(err);
     }
+    
 })
 
+// get method
 app.get('/user/:username', (req, res) => {
     const username = req.params['username'];
     async function getUser() {
@@ -160,3 +200,38 @@ app.get('/user/:username', (req, res) => {
     }
     getUser();
 });
+
+app.get('/post/:uuid', (req, res) => {
+    const uuid = req.params['uuid']
+    async function getPost() {
+        try{
+            const findPost = await Posts.findOne({where: {uuid: uuid}})
+            if(findPost){
+                findPost.images = findPost.images.toString('base64')
+                console.log(findPost.images)
+                res.status(200).send(findPost)
+            }
+        } catch (err) {
+            res.status(404).send('Request failed.')
+        }
+    } 
+    getPost();
+});
+// delete method 
+
+app.delete('/delete/:user', async (req, res) => {
+    const user = req.params['user'];
+    try {
+        const findUser = await User.findOne({where: {username: user}})
+        if(findUser){
+            const destroyUser = await User.destroy({where: {username: findUser.username}})
+            if(destroyUser != null){
+                res.status(200).send('Success.')
+            }
+        }
+    } catch (err) {
+        console.log(err)
+        res.status(409).send(err)
+    }
+
+})
