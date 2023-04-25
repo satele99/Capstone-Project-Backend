@@ -91,7 +91,19 @@ const Comments = sequelizeServer.define('comments', {
         field: 'comment'
     }
     
+});
+
+const Message = sequelizeServer.define('message', {
+    subject: {
+        type: DataTypes.STRING,
+        field: 'subject'
+    },
+    messageBody: {
+        type: DataTypes.TEXT,
+        field: 'message_body'
+    }
 })
+
 
 User.hasMany(Posts);
 User.hasMany(Comments);
