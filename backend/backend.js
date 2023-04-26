@@ -5,11 +5,11 @@ const app = express();
 const server = http.createServer(app);
 const { Sequelize, DataTypes } = require('sequelize');
 const port = 7000
-const sequelizeServer = new Sequelize('postgres://amirhali:satele@localhost:6000/amirhali', {
+const sequelizeServer = new Sequelize('postgres://postgres:satele99@localhost:5432/postgres', {
     define: {
         schema: 'capstone_backend'
     }
-});
+}); 
 
 
 
