@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const http = require('http');
+const { Server } = require('socket.io')
 const app = express();
 const server = http.createServer(app);
 const { Sequelize, DataTypes } = require('sequelize');
@@ -10,6 +11,23 @@ const sequelizeServer = new Sequelize('postgres://postgres:satele99@localhost:54
         schema: 'capstone_backend'
     }
 }); 
+const io = new Server(server, {
+    cors: {
+        origin: 'http://localhost:3000'
+    }
+})
+
+io.on('connection', (socket)=> {
+    console.log(`${socket.id} connected to server`)
+
+    socket.on('send-message', (data)=> {
+        socket.broadcast.emit('recieve-message', data)
+        console.log(data)
+    })
+    socket.on('disconnect', () => {
+        console.log(`${socket.id} disconected from server`)
+    })
+})
 
 
 
@@ -186,6 +204,18 @@ app.get('/user/:username', (req, res) => {
     }
     getUser();
 });
+
+app.get('/all-users', async (req, res) => {
+    try {
+        const getAllUsers = await User.findAll()
+        if(getAllUsers){
+            console.log(getAllUsers)
+            res.status(200).send(getAllUsers)
+        }
+    } catch (err) {
+        console.log(err)
+    }
+})
 
 app.get('/post/:uuid', (req, res) => {
     const uuid = req.params['uuid']
