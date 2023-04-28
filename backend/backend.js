@@ -22,7 +22,7 @@ io.on('connection', (socket)=> {
 
     socket.on('send-message', (data)=> {
         socket.broadcast.emit('recieve-message', data)
-        console.log(data)
+        // console.log(data)
     })
     socket.on('disconnect', () => {
         console.log(`${socket.id} disconected from server`)
