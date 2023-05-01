@@ -17,17 +17,29 @@ const io = new Server(server, {
     }
 })
 
-io.on('connection', (socket)=> {
-    console.log(`${socket.id} connected to server`)
+io.on('connection', socket => {
+    console.log(socket.id + ' ==== connected')
 
-    socket.on('send-message', (data)=> {
-        socket.broadcast.emit('recieve-message', data)
-        // console.log(data)
+    socket.on('send-notif', (data)=> {
+        console.log(socket.id + ' sent notif')
+        socket.broadcast.emit('recieve-notif', data) 
     })
+    socket.on('join', (data) => {
+        socket.join(data.user)
+        console.log(socket.id+' joined '+data.user+' room')
+        io.sockets.in(data.user).emit('new_msg', ) 
+    })
+    socket.on('send-message', data => {
+        socket.to(data.room).emit('recieve-message', data)
+    })
+
     socket.on('disconnect', () => {
-        console.log(`${socket.id} disconected from server`)
+        console.log(socket.id + ' ==== disconnected');
+        socket.removeAllListeners();
     })
 })
+
+
 
 
 
@@ -49,7 +61,6 @@ sequelizeServer.authenticate().then(()=> {
 sequelizeServer.sync({alter: true}).then(()=> {
     console.log('tables created successfully')
 });
-
 
 const User = sequelizeServer.define('users', {
     username:{
@@ -93,9 +104,9 @@ const Posts = sequelizeServer.define('posts', {
         type: DataTypes.STRING,
         field: 'username'
     },
-    images: {
-        type: DataTypes.BLOB('long'),
-        field: 'post_image'
+    date:{
+        type: DataTypes.STRING,
+        field: 'date_time'
     }, 
     uuid: {
         type: DataTypes.STRING,
@@ -171,7 +182,7 @@ app.post('/create-post', async (req,res)=> {
             Posts.create({
                 content: addPost.content,
                 likes: addPost.likes,
-                images: addPost.images,
+                date: addPost.date,
                 username: addPost.username,
                 uuid: addPost.uuid
             });
@@ -188,28 +199,48 @@ app.post('/create-post', async (req,res)=> {
 })
 
 // get method
-app.get('/user/:username', (req, res) => {
+app.get('/user/:username/:password', (req, res) => {
     const username = req.params['username'];
+    const password = req.params['password'];
+    console.log(username, password)
     async function getUser() {
         try{
-            const findUser = await User.findOne({where: {username: username}})
+            console.log('in function')
+            const findUser = await User.findOne({where: {username: username, password: password}})
             if(findUser){
+                console.log('found')
                 res.status(200).send(findUser)
+            }else {
+                res.status(409).send(null)
             }
         } catch (err) {
             if(err){
+                console.log('not found')
                 res.status(409).send('Request failed with status code 409.')
             }
         }
     }
     getUser();
 });
+app.get('/get-user-post/:userId', async (req, res) => {
+    try {
+        const userId = req.params['userId']
+        const findUser = await User.findOne({where:{id: userId}})
+        if(findUser){
+            const findPosts = await Posts.findAll({where: {userId: findUser.id}})
+            if(findPosts){
+                res.status(200).send(findPosts)
+            }
+        }
+    } catch (err) {
+        res.status(409).send('failed')
+    }
+})
 
 app.get('/all-users', async (req, res) => {
     try {
         const getAllUsers = await User.findAll()
         if(getAllUsers){
-            console.log(getAllUsers)
             res.status(200).send(getAllUsers)
         }
     } catch (err) {
@@ -223,8 +254,6 @@ app.get('/post/:uuid', (req, res) => {
         try{
             const findPost = await Posts.findOne({where: {uuid: uuid}})
             if(findPost){
-                findPost.images = findPost.images.toString('base64')
-                console.log(findPost.images)
                 res.status(200).send(findPost)
             }
         } catch (err) {
@@ -233,6 +262,16 @@ app.get('/post/:uuid', (req, res) => {
     } 
     getPost();
 });
+app.get('/all-posts', async (req, res) => {
+    try {
+        const grabAllPosts = await Posts.findAll()
+        if(grabAllPosts){
+            res.status(200).send(grabAllPosts)
+        }
+    } catch (err) {
+        console.log(err)
+    }
+})
 // delete method 
 
 app.delete('/delete/:user', async (req, res) => {
@@ -252,6 +291,21 @@ app.delete('/delete/:user', async (req, res) => {
 
 }) 
 
+app.delete('/delete-post/:uuid', async (req, res) => {
+    const uuid = req.params['uuid']
+    try {
+        const findPost = await Posts.findOne({where: {uuid: uuid}})
+        if(findPost){
+            const destroyPost = await Posts.destroy({where: {uuid: findPost.uuid}})
+            if(destroyPost != null){
+                res.status(200).send('Success.')
+            }
+        }
+    } catch (err) {
+        console.log(err)
+        res.status(409).send(err)
+    }
+})
 // put method 
 app.put('/update-password/:user/:newPassword', async (req, res) => {
     try {
@@ -264,5 +318,46 @@ app.put('/update-password/:user/:newPassword', async (req, res) => {
         }
     } catch (err) {
         res.status(409).send(err)
+    }
+})
+
+app.put('/update-interest/:userID/:interest', async (req, res) => {
+    try {
+        const userId = req.params['userID']
+        const updatedInterest = req.params['interest']
+        const findUser = await User.findOne({where: {id : userId}})
+        if(findUser){
+            const updateInterest = await User.update({interests: updatedInterest}, {where: {id: findUser.id}})
+            res.status(200).send('Success.')
+        }
+    } catch (err) {
+        console.log(err)
+        res.status(500).send(err)
+    }
+})
+
+app.put('/update-likes/:uuid', async (req, res) => {
+    try {
+        const uuid = req.params['uuid']
+        const findPost = await Posts.findOne({where: { uuid: uuid}})
+        if(findPost){
+            const addLike = await Posts.increment('likes', {by: 1, where: {uuid: findPost.uuid}})
+            res.status(200).send('Success.')
+        }
+    } catch (err) { 
+        console.log(err)
+    }
+})
+
+app.put('/decrement-likes/:uuid', async (req, res) => {
+    try {
+        const uuid = req.params['uuid']
+        const findPost = await Posts.findOne({where:{ uuid: uuid}})
+        if(findPost){
+            const removeLike = await Posts.decrement('likes', {by: 1, where: {uuid: findPost.uuid}}) 
+            res.status(200).send('Success.')
+        }
+    } catch (err) {
+        console.log(err)
     }
 })
