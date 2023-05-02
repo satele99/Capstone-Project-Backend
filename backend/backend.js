@@ -114,32 +114,12 @@ const Posts = sequelizeServer.define('posts', {
     }
 });
 
-const Comments = sequelizeServer.define('comments', {
-    comment: {
-        type: DataTypes.STRING,
-        field: 'comment'
-    }
-    
-});
 
-const Message = sequelizeServer.define('message', {
-    subject: {
-        type: DataTypes.STRING,
-        field: 'subject'
-    },
-    messageBody: {
-        type: DataTypes.TEXT,
-        field: 'message_body'
-    }
-})
 
 
 User.hasMany(Posts);
-User.hasMany(Comments);
-Posts.hasMany(Comments);
 Posts.belongsTo(User);
-Comments.belongsTo(User);
-Comments.belongsTo(Posts);
+
 
 //ENDPOINTS VVV
 
